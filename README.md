@@ -1,70 +1,77 @@
-###  Бот для записи
+# Telegram Registration Bot with Google Sheets Sync
 
-Небольшой Telegram‑бот на aiogram 3 для записи пользователей в базу и синхронизации данных с Google Sheets.
+A production-ready asynchronous Telegram bot built with **Aiogram 3** and **SQLite3** that automates user registration and handles background synchronization with the **Google Sheets API** via a Service Account.
 
-### Возможности
-- **Регистрация**: бот собирает ФИО и номер телефона; ник Telegram подтягивается автоматически
-- **Хранение**: данные сохраняются в SQLite (`database/registrs.db`)
-- **Синхронизация**: фоновая задача добавляет новые записи в Google Sheets, не перезаписывая уже существующие
-- **Валидация телефона**: проверка, что введённые символы — только цифры
+---
 
-### Требования
-- Python 3.11+
+## 🚀 Features
 
-### Установка
-1) Установить зависимости:
-   ```bash
+* **User Registration:** Seamlessly collects Full Name (FIO) and phone number. Includes built-in numerical validation for phone inputs.
+* **Telegram Metadata:** Automatically captures and binds the user's Telegram username (`usrname`) to their profile.
+* **Deep Linking Support:** Features a dedicated registration workflow triggered strictly via a deep link: `t.me/your_bot?start=reg`.
+* **Background Synchronization:** Powered by an asynchronous background task (`asyncio`) that periodically (every 5 minutes) checks for new database rows and appends them to a Google Sheet without overwriting old data.
+* **Production Security:** Zero risk of credential leaks. All sensitive tokens, API keys, and environment configs are isolated from the Git history using tailored `.gitignore` rules.
+
+---
+
+## 🛠️ Tech Stack
+
+* **Core Framework:** Python 3.11+
+* **Bot API:** Aiogram 3.x (Asynchronous)
+* **Database:** SQLite3
+* **Cloud Integration:** Google Sheets API & Google Drive API
+* **Authentication:** Google Service Account (OAuth2)
+
+---
+
+## 📦 Installation & Setup
+
+1. Clone the repository and move into the project directory:
+   git clone https://github.com/foenichka/Rate_botik.git
+   cd Rate_botik
+
+2. Install all required dependencies from the requirements file:
    pip install -r requirements.txt
-   ```
-2) Подготовить окружение:
-   - Создать файл `.env` и указать токен бота:
-     ```env
-     BOT_T=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-     ```
-   - Секреты Google (service account):
-     - Рекомендуемый способ — переменные окружения (`GOOGLE_...`, см. ниже) или локальный файл `.secrets/cred.json` (не попадает в git).
-     - Поддерживается также fallback-файл `sheets/cred.json` для локальной разработки, но он игнорируется git.
 
-   Важно: ключи не должны попадать в репозиторий. Файлы в `.secrets/` и `sheets/cred.json` игнорируются `.gitignore`.
+3. Create a `.env` file in the root directory of your project and configure your environment variables:
+   BOT_T=YOUR_TELEGRAM_BOT_TOKEN
+   GSHEET_ID=YOUR_GOOGLE_SPREADSHEET_ID
+   GSHEET_DATA_SHEET=Sheet1
+   GSHEET_META_SHEET=meta
 
-### Запуск
-```bash
-python main.py
-```
+---
 
-При запуске инициализируется база и стартует фоновая синхронизация c Google Sheets (раз в ~5 минут). Новые записи из БД дозаписываются в таблицу, а не затирают её.
+## 🔑 Google Service Account Configuration
 
-### Как начать регистрацию
-- Откройте бота по дип‑ссылке вида: `https://t.me/<ваш_бот>?start=reg`
-- Нажмите кнопку «Записаться» и следуйте инструкциям
+To securely connect the bot to your target Google Sheet, you can choose **one of the two supported methods**:
 
-### Конфигурация синхронизации
-- Идентификатор таблицы и листа задаются через переменные окружения или дефолты в `sheets/sync.py`:
-  - `GSHEET_ID` — id таблицы
-  - `GSHEET_DATA_SHEET` — лист с данными (по умолчанию `Sheet1`)
-  - `GSHEET_META_SHEET` — лист для метаданных (по умолчанию `meta`)
-- Заголовки столбцов: `name`, `phone`, `usrname`
+### Method 1: Local JSON File (Recommended for Local Development)
+Download your Service Account keys from the Google Cloud Console as a JSON file. Save it to one of these paths (both are automatically ignored by Git):
+* `.secrets/cred.json` (Preferred)
+* `sheets/cred.json` (Fallback)
 
-### Конфигурация Google Service Account (любой из способов)
-1) Через переменные окружения:
-   ```env
+### Method 2: Environment Variables (Recommended for Production/Hosting)
+Alternatively, you can append your raw Google credentials directly into your local `.env` file:
    GOOGLE_TYPE=service_account
-   GOOGLE_PROJECT_ID=...
-   GOOGLE_PRIVATE_KEY_ID=...
+   GOOGLE_PROJECT_ID=your_project_id
+   GOOGLE_PRIVATE_KEY_ID=your_private_key_id
    GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-   GOOGLE_CLIENT_EMAIL=...
-   GOOGLE_CLIENT_ID=...
+   GOOGLE_CLIENT_EMAIL=your_service_account_email
+   GOOGLE_CLIENT_ID=your_client_id
    GOOGLE_AUTH_URI=https://accounts.google.com/o/oauth2/auth
    GOOGLE_TOKEN_URI=https://oauth2.googleapis.com/token
-   GOOGLE_AUTH_PROVIDER_X509_CERT_URL=https://www.googleapis.com/oauth2/v1/certs
-   GOOGLE_CLIENT_X509_CERT_URL=...
+   GOOGLE_AUTH_PROVIDER_X509_CERT_URL=https://www.googleapis.com/0auth2/v1/certs
+   GOOGLE_CLIENT_X509_CERT_URL=your_cert_url
    GOOGLE_UNIVERSE_DOMAIN=googleapis.com
-   ```
-2) Через файл `.secrets/cred.json` (безопасный локальный путь, игнорируется git).
-3) В качестве fallback — `sheets/cred.json` (не рекомендуется для продакшн).
 
-### Полезно знать
-- Виртуальное окружение `.venv/` исключено в `.gitignore`
-- Для логирования используйте уровни логера вместо `print`
+---
 
+## ⚡ Running the Bot
 
+To spin up the application, execute:
+   python main.py
+
+Upon startup, the script will automatically:
+1. Initialize the SQLite database structure inside `database/registrs.db` if it doesn't exist.
+2. Launch the long-polling bot client.
+3. Start the background sync loop, utilizing Python's native `logging` library instead of raw prints for better production visibility.
